@@ -1,0 +1,50 @@
+# TA-Nvidia
+
+Collects all NVIDIA GPU statistics via `nvidia-smi` as scripted inputs.
+
+## What it collects
+
+- `nvidia-smi -q -x` — the complete XML dump — flattened to single-level
+  JSON (e.g. `temperature.gpu_temp`, `utilization.gpu_util`, ECC,
+  clocks, power, PCI info) plus running compute processes
+  (`--query-compute-apps`). The static `supported_clocks.*` capability
+  table is pruned (it is constant hardware data, not a statistic).
+
+## Data streams
+
+| Input (bin/)                    | Sourcetype           | Index     |
+|---------------------------------|----------------------|-----------|
+| `nvidia_smi_events.py`          | `nvidia:smi`         | `main`    |
+| `nvidia_smi_metrics.py`         | `nvidia:smi:metrics` | `metrics` |
+
+Every numeric leaf of the dump becomes a metric named
+`nvidia.<flattened_key>` (dots replaced with underscores in the key part,
+e.g. `nvidia.temperature_gpu_temp`, `nvidia.fb_memory_usage_used`) with
+dimensions `gpu_index`, `gpu_uuid`, `gpu_name`, `driver_version`.
+Metric conversion requires the `METRIC-SCHEMA-TRANSFORMS` stanza in
+`transforms.conf` — without it, metric index events are rejected as
+`BAD_METRIC_EVENT`. Fields are indexed automatically
+(`INDEXED_EXTRACTIONS = json`).
+
+Both inputs poll every 60 seconds (edit `interval` in `local/inputs.conf`).
+
+## Dashboards
+
+- **GPU Overview** — event dashboard over `index=main`: GPU status, utilization,
+  memory, temperature/power trends, compute processes.
+- **GPU Metrics** — `mstats` dashboard over `index=metrics`.
+
+## Search examples
+
+```
+search index=main sourcetype="nvidia:smi" | stats latest(temperature.gpu_temp) as temp by gpu_index, product_name
+
+| mstats avg("nvidia.utilization_gpu_util") as gpu_util span=1m where index=metrics by gpu_name
+```
+
+## Requirements
+
+- `nvidia-smi` on PATH, NVIDIA driver installed
+- Splunk 9.x (bundled Python 3)
+
+Version 1.0.0

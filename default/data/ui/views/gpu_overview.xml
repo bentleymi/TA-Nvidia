@@ -1,0 +1,98 @@
+<dashboard version="1.1" theme="light">
+  <label>NVIDIA GPU Overview</label>
+  <description>Full nvidia-smi dump events (index=main, sourcetype=nvidia:smi)</description>
+  <row>
+    <panel>
+      <title>GPU Status</title>
+      <table>
+        <search earliest_time="-1h" latest_time="now">
+          <query>index=main sourcetype="nvidia:smi"
+| stats latest(temperature.gpu_temp) as Temp latest(utilization.gpu_util) as "GPU Util" latest(utilization.memory_util) as "Mem Util" latest(fb_memory_usage.used) as "Mem Used" latest(fb_memory_usage.total) as "Mem Total" latest(gpu_power_readings.average_power_draw) as Power latest(fan_speed) as Fan latest(persistence_mode) as Persistence latest(driver_version) as Driver latest(vbios_version) as "VBIOS" by gpu_index product_name
+| rename gpu_index as "GPU", product_name as "Product"</query>
+          <done/>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>GPU Utilization</title>
+      <chart>
+        <search earliest_time="-24h" latest_time="now">
+          <query>index=main sourcetype="nvidia:smi"
+| eval util=tonumber(substr('utilization.gpu_util',1,if('utilization.gpu_util'=="N/A",-1,length('utilization.gpu_util')-2)))
+| timechart span=1m avg(util) as "GPU Util %" by product_name</query>
+          <done/>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Memory (MiB)</title>
+      <chart>
+        <search earliest_time="-24h" latest_time="now">
+          <query>index=main sourcetype="nvidia:smi"
+| eval mem_used=tonumber(trim('fb_memory_usage.used',"%sMiB"))
+| timechart span=1m avg(mem_used) as "Memory Used" by product_name</query>
+          <done/>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Temperature (C)</title>
+      <chart>
+        <search earliest_time="-24h" latest_time="now">
+          <query>index=main sourcetype="nvidia:smi"
+| eval temp=tonumber(trim('temperature.gpu_temp'," C"))
+| timechart span=1m avg(temp) as "GPU Temp" by product_name</query>
+          <done/>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Power Draw (W)</title>
+      <chart>
+        <search earliest_time="-24h" latest_time="now">
+          <query>index=main sourcetype="nvidia:smi"
+| eval power_w=tonumber(trim('gpu_power_readings.average_power_draw'," W"))
+| timechart span=1m avg(power_w) as "Avg Power (W)" by product_name</query>
+          <done/>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Compute Processes (latest poll)</title>
+      <table>
+        <search earliest_time="-2m" latest_time="now">
+          <query>index=main sourcetype="nvidia:smi"
+| head 1
+| spath input=_raw path=compute_processes{} output=proc
+| mvexpand proc
+| spath input=proc
+| table pid, process_name, used_memory, type
+| rename used_memory as "Used GPU Memory (MiB)", type as "Process Type", pid as PID, process_name as "Process"</query>
+          <done/>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

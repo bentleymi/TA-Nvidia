@@ -1,0 +1,70 @@
+<dashboard version="1.1" theme="light">
+  <label>NVIDIA GPU Metrics</label>
+  <description>Index-time metrics over index=metrics (sourcetype=nvidia:smi:metrics)</description>
+  <row>
+    <panel>
+      <title>Current Values (by GPU)</title>
+      <table>
+        <search earliest_time="-1h" latest_time="now">
+          <query>| mstats avg("nvidia.temperature_gpu_temp") as Temp avg("nvidia.utilization_gpu_util") as "GPU Util %" avg("nvidia.fb_memory_usage_used") as "Mem Used" avg("nvidia.fb_memory_usage_total") as "Mem Total" avg("nvidia.gpu_power_readings_average_power_draw") as "Power (W)" avg("nvidia.fan_speed") as "Fan %" avg("nvidia.clocks_graphics_clock") as "Graphics Clock" where index=metrics by gpu_name span=1m
+| rename gpu_name as GPU, gpu_uuid as UUID</query>
+          <done/>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>GPU Utilization (mstats)</title>
+      <chart>
+        <search earliest_time="-24h" latest_time="now">
+          <query>| mstats avg("nvidia.utilization_gpu_util") as "GPU Util %" where index=metrics by gpu_name span=1m
+| xyseries _time gpu_name "GPU Util %"</query>
+          <done/>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Memory Used (MiB, mstats)</title>
+      <chart>
+        <search earliest_time="-24h" latest_time="now">
+          <query>| mstats avg("nvidia.fb_memory_usage_used") as "Mem Used" where index=metrics by gpu_name span=1m
+| xyseries _time gpu_name "Mem Used"</query>
+          <done/>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Temperature and Power (mstats)</title>
+      <chart>
+        <search earliest_time="-24h" latest_time="now">
+          <query>| mstats avg("nvidia.temperature_gpu_temp") as Temp avg("nvidia.gpu_power_readings_average_power_draw") as Power where index=metrics span=1m</query>
+          <done/>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Distinct Metric Names (last hour)</title>
+      <single>
+        <search earliest_time="-1h" latest_time="now">
+          <query>| mcatalog values(metric_name) as m where index=metrics
+| eval count=mvcount(m)</query>
+          <done/>
+        </search>
+        <option name="underLabel">nvidia.* metrics streaming</option>
+      </single>
+    </panel>
+  </row>
+</dashboard>
