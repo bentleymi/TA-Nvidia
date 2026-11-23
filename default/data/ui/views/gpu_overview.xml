@@ -1,8 +1,32 @@
 <dashboard version="1.1" theme="light">
   <label>NVIDIA GPU Overview</label>
   <description>Full nvidia-smi dump events (index=main, sourcetype=nvidia:smi)</description>
+  <!-- TA-LIC-VIZ: keep this block; do not hand-edit -->
   <row>
     <panel>
+      <title>License status (TA-Nvidia)</title>
+      <single>
+        <search>
+          <query>index=main sourcetype="ta_license:status" app="TA-Nvidia" [| rest /services/server/info | eval host=splunk_server | fields host] earliest=-3h | stats latest(status) as st | eval value=if(st==&quot;active&quot;,"Licensed","Unlicensed") | table value</query>
+          <done>
+            <condition match="$result.value$ == &quot;Licensed&quot;">
+              <eval token="Nvidia_lic_ok">"1"</eval>
+              <unset token="Nvidia_lic_missing"/>
+            </condition>
+            <condition>
+              <eval token="Nvidia_lic_missing">"1"</eval>
+              <unset token="Nvidia_lic_ok"/>
+            </condition>
+          </done>
+        </search>
+        <option name="mapping">[{"color":"#2e7d32","value":"Licensed"},{"color":"#c62828","value":"Unlicensed"}]</option>
+        <option name="underLabel">key beacon within 24h &lt;a href="/app/TA-Nvidia/license"&gt;enter key&lt;/a&gt;</option>
+      </single>
+    </panel>
+    <panel depends="$Nvidia_lic_ok$">
+      <html><![CDATA[<p style="color:#2e7d32;font-weight:bold">This host is licensed for TA-Nvidia. Thanks for supporting BentleyPC development!</p>]]></html>
+    </panel>
+    <panel depends="$Nvidia_lic_missing$">
       <title>Commercial use of TA-Nvidia requires a paid license (evaluation, personal, lab use free)</title>
       <table>
         <search><query>| makeresults | eval buy="Buy License at bentleypc.com/TA-Nvidia", terms="License and Terms at bentleypc.com/TA-Nvidia/LICENSE.html" | fields buy terms</query></search>
